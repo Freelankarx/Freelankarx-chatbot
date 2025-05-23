@@ -6,14 +6,14 @@ from email.mime.text import MIMEText
 
 app = Flask(__name__)
 
-# Set your OpenAI API key from environment variable for safety
+# Set your OpenAI API key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Your email credentials from Render environment variables
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")  # e.g. freelankarx@gmail.com
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")  # app password or normal password
+# Email credentials from Render env vars
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 
-# Load your index.html content (or serve a real template)
+# Load index.html
 with open("index.html", "r") as f:
     INDEX_HTML = f.read()
 
@@ -25,30 +25,28 @@ def home():
 def chat():
     data = request.json
     message = data.get("message")
-    user_email = data.get("email")  # Optional, if your frontend sends user email
+    user_email = data.get("email")
 
     if not message:
         return jsonify({"reply": "Please say something!"})
 
     try:
-        # Call OpenAI ChatCompletion API
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4",  # Use a correct model name
             messages=[{"role": "user", "content": message}],
             temperature=0.7,
             max_tokens=150,
         )
         reply = response['choices'][0]['message']['content']
 
-        # Optional: send email notification to you about this user message
         if user_email:
             send_email(user_email, message, reply)
 
         return jsonify({"reply": reply})
 
     except Exception as e:
-        print("OpenAI API error:", e)
-        return jsonify({"reply": "Sorry, I couldn’t answer that."})
+        print("OpenAI API error:", str(e))  # Log the actual error
+        return jsonify({"reply": "Something went wrong: " + str(e)})
 
 def send_email(user_email, user_message, bot_reply):
     try:
