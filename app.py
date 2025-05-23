@@ -19,7 +19,7 @@ with open("index.html", "r") as f:
 
 @app.route("/")
 def home():
-    return render_template_string(index.html)
+    return render_template_string(INDEX_HTML)
 
 @app.route("/chat", methods=["POST"])
 def chat():
