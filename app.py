@@ -36,7 +36,7 @@ def chat():
             return jsonify({"reply": "No message provided."}), 400
 
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful Shopify/dropshipping expert assistant."},
                 {"role": "user", "content": message}
