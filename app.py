@@ -1,71 +1,39 @@
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
-import openai
-import os
-import smtplib
-from email.mime.text import MIMEText
+from flask import Flask, request, jsonify from flask_cors import CORS import smtplib from email.message import EmailMessage import os
 
-app = Flask(__name__)
-CORS(app, resources={r"/chat": {"origins": "*"}})
+app = Flask(name) CORS(app)
 
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS") EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 
-@app.route("/")
-def index():
-    return send_file("index.html")
+@app.route("/lead", methods=["POST"]) def receive_lead(): data = request.get_json()
 
-@app.route("/chat", methods=["POST", "OPTIONS"])
-def chat():
-    # CORS preflight
-    if request.method == "OPTIONS":
-        return '', 200, {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type",
-            "Access-Control-Allow-Methods": "POST"
-        }
+name = data.get("name")
+email = data.get("email")
+service = data.get("service")
+urgency = data.get("urgency")
+budget = data.get("budget")
+recommendation = data.get("recommendation")
+score = data.get("score")
 
-    # Handle POST chat request
-    try:
-        data = request.get_json()
-        message = data.get("message", "")
-        user_email = data.get("email", "")
+msg = EmailMessage()
+msg["Subject"] = f"New Lead from Freelankarx Assistant: {name}"
+msg["From"] = EMAIL_ADDRESS
+msg["To"] = EMAIL_ADDRESS
 
-        if not message:
-            return jsonify({"reply": "No message provided."}), 400
+msg.set_content(f"""
 
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful Shopify/dropshipping expert assistant."},
-                {"role": "user", "content": message}
-            ]
-        )
-        reply = response.choices[0].message.content.strip()
+New Lead Details:
 
-        if user_email:
-            send_email(user_email, message, reply)
+Name: {name} Email: {email} Service: {service} Urgency: {urgency} Budget: {budget} Recommended Plan: {recommendation} Lead Score: {score}/10 """)
 
-        return jsonify({"reply": reply})
+try:
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        smtp.send_message(msg)
+    return jsonify({"success": True, "message": "Lead received and email sent."})
+except Exception as e:
+    return jsonify({"success": False, "error": str(e)}), 500
 
-    except Exception as e:
-        print("Chat error:", str(e))
-        return jsonify({"reply": f"Something went wrong: {str(e)}"}), 500
+@app.route("/", methods=["GET"]) def home(): return "Freelankarx Assistant Backend Running"
 
-def send_email(user_email, user_message, bot_reply):
-    try:
-        msg = MIMEText(f"User: {user_email}\n\nMessage: {user_message}\n\nBot reply:\n{bot_reply}")
-        msg["Subject"] = "New Freelankarx Chatbot Message"
-        msg["From"] = EMAIL_ADDRESS
-        msg["To"] = EMAIL_ADDRESS
+if name == "main": app.run(host='0.0.0.0', port=5000)
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
-        print("Email sent to", EMAIL_ADDRESS)
-    except Exception as e:
-        print("Email error:", e)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
